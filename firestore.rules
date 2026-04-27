@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'Safalacharya3@gmail.com'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Entity Validations ---
+
+    function isValidReview(data) {
+      return data.productId is string && data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() <= 800;
+    }
+
+    function isValidOrder(data) {
+      return data.userId == request.auth.uid && data.total is number && 
+             data.status in ['pending', 'shipped', 'delivered', 'cancelled'];
+    }
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.category is string && data.category.size() <= 50;
+    }
+
+    function isValidCartItem(data) {
+      return data.productId is string && isValidId(data.productId) &&
+             data.quantity is int && data.quantity > 0 && data.quantity <= 99;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['displayName']) &&
+             data.displayName is string && data.displayName.size() <= 50;
+    }
+
+    function isValidUserPrivateData(data) {
+      return data.keys().hasAll(['email']) &&
+             data.email is string && data.email.size() <= 100;
+    }
+
+    // --- Collections ---
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isSignedIn() && isValidReview(request.resource.data);
+        allow update, delete: if isAdmin() || (isOwner(request.resource.data.userId));
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidOrder(request.resource.data);
+      allow update: if isAdmin(); 
+    }
+
+    match /users/{userId} {
+      match /public/profile {
+        allow read: if isSignedIn();
+        allow create, update: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      }
+
+      match /private/data {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidUserPrivateData(request.resource.data);
+      }
+
+      match /cart/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCartItem(request.resource.data);
+        allow update: if isOwner(userId) && isValidCartItem(request.resource.data) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity']);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

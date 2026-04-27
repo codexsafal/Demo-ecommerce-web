@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A luxury item available for purchase in the Vanta Store.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "inventory": { "type": "integer" }
+      },
+      "required": ["name", "price", "category", "imageUrl"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Public-facing user information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      }
+    },
+    "UserPrivateData": {
+      "title": "User Private Data",
+      "description": "Sensitive user information strictly isolated.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "address": { "type": "string" },
+        "phoneNumber": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "CartItem": {
+      "title": "Cart Item",
+      "description": "An item in a user's shopping cart.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "selectedVariants": { "type": "object" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "quantity"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a product.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "isVerified": { "type": "boolean" }
+      }
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A completed purchase order.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "shipped", "delivered", "cancelled"] },
+        "shippingAddress": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "A collection of luxury products."
+    },
+    "/products/{productId}/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Product reviews."
+    },
+    "/users/{userId}/public/profile": {
+      "schema": "UserProfile",
+      "description": "Public profile for each user, includes roles."
+    },
+    "/users/{userId}/private/data": {
+      "schema": "UserPrivateData",
+      "description": "Private, sensitive data for each user."
+    },
+    "/users/{userId}/cart/{itemId}": {
+      "schema": "CartItem",
+      "description": "User's individual shopping cart."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "System-wide order management."
+    }
+  }
+}
